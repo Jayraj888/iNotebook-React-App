@@ -19,11 +19,12 @@ router.post(
     }),
   ],
   async (req, res) => {
+    let success = false;
     // If there are errors, return bad requests and the errors
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ success, errors: errors.array() });
     }
 
     try {
@@ -32,7 +33,10 @@ router.post(
       if (user) {
         return res
           .status(400)
-          .json({ error: "Sorry a user with this email already exists" });
+          .json({
+            success,
+            error: "Sorry a user with this email already exists",
+          });
       }
 
       const salt = await bcrypt.genSalt(10);
@@ -54,12 +58,13 @@ router.post(
       const authtoken = jwt.sign(data, JWT_SECRET);
 
       // res.json({ user });
-      res.json({ authtoken });
+      success = true;
+      res.json({ success, authtoken });
     } catch (error) {
       console.error(error.message);
       res.status(500).send("Internal Server Error");
     }
-  }
+  },
 );
 // ROUTE 2: Authenticate a User using: POST "/api/auth/login". No login require
 router.post(
@@ -69,6 +74,7 @@ router.post(
     body("password", "Password cannot be blank").exists(),
   ],
   async (req, res) => {
+    let success = false;
     // If there are errors, return bad requests and the errors
     const errors = validationResult(req);
 
@@ -80,6 +86,7 @@ router.post(
     try {
       let user = await User.findOne({ email });
       if (!user) {
+        success = false;
         return res
           .status(400)
           .json({ error: "Please enter a valid credentials" });
@@ -87,9 +94,10 @@ router.post(
 
       const passwordCompare = await bcrypt.compare(password, user.password);
       if (!passwordCompare) {
+        success = false;
         return res
           .status(400)
-          .json({ error: "Please enter a valid credentials" });
+          .json({ success, error: "Please enter a valid credentials" });
       }
       const data = {
         user: {
@@ -98,12 +106,13 @@ router.post(
       };
 
       const authtoken = jwt.sign(data, JWT_SECRET);
-      res.json(authtoken);
+      success = true;
+      res.json({ success: true, authtoken });
     } catch (error) {
       console.error(error.message);
       res.status(500).send("Internal Server Error");
     }
-  }
+  },
 );
 
 // ROUTE 3: Get logged in User details using: POST "/api/auth/getuser". Login required
